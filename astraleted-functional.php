@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
 
-/*
- * Astraleted.ru — one-file frontend + PHP API proxy for SMSCodex.
+*
+ /* Astraleted.ru — one-file frontend + PHP API proxy for SMSCodex.
  *
  * Production environment variables:
  *   SMSCODEX_API_KEY     = your SMSCodex key
@@ -37,9 +37,9 @@ header("Content-Security-Policy: default-src 'self'; connect-src 'self'; img-src
 
 const SMSCODEX_BASE = 'https://smscodex.com/api/v1';
 
-$SMSCODEX_API_KEY = trim((string)(getenv('SMSCODEX_API_KEY') ?: ''));
+$SMSCODEX_API_KEY = trim((string)(getenv('SMSCODEX_API_KEY') ?: 'api_9tOtGXN0aOLCM8R7qTkjT9rVpTMY2AOgUlDsHGnjh0Y'));
 $ASTRALETED_USERNAME = trim((string)(getenv('ASTRALETED_USERNAME') ?: 'admin'));
-$ASTRALETED_PASSWORD = (string)(getenv('ASTRALETED_PASSWORD') ?: '');
+$ASTRALETED_PASSWORD = (string)(getenv('ASTRALETED_PASSWORD') ?: '1122');
 $ASTRALETED_MOCK = ((string)(getenv('ASTRALETED_MOCK') ?: '')) === '1';
 $REMOTE_ADDR = (string)($_SERVER['REMOTE_ADDR'] ?? '');
 $IS_LOCAL = in_array($REMOTE_ADDR, ['127.0.0.1', '::1'], true);
