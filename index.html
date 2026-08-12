@@ -1,354 +1,3 @@
-<?php
-declare(strict_types=1);
-
-*
- /* Astraleted.ru — one-file frontend + PHP API proxy for SMSCodex.
- *
- * Production environment variables:
- *   SMSCODEX_API_KEY     = your SMSCodex key
- *   ASTRALETED_USERNAME  = site login (e.g. admin)
- *   ASTRALETED_PASSWORD  = strong site password
- *
- * Optional local demo mode (does not call SMSCodex and does not spend money):
- *   ASTRALETED_MOCK=1
- *
- * IMPORTANT: keep the SMSCodex key server-side. Never paste it into JavaScript/HTML.
- */
-
-$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-
-session_name('astraleted_session');
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'secure' => $https,
-    'httponly' => true,
-    'samesite' => 'Strict',
-]);
-session_start();
-
-header_remove('X-Powered-By');
-header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: DENY');
-header('Referrer-Policy: no-referrer');
-header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
-header("Content-Security-Policy: default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
-
-const SMSCODEX_BASE = 'https://smscodex.com/api/v1';
-
-$SMSCODEX_API_KEY = trim((string)(getenv('SMSCODEX_API_KEY') ?: 'api_9tOtGXN0aOLCM8R7qTkjT9rVpTMY2AOgUlDsHGnjh0Y'));
-$ASTRALETED_USERNAME = trim((string)(getenv('ASTRALETED_USERNAME') ?: 'galod7206@gmail.com'));
-$ASTRALETED_PASSWORD = (string)(getenv('ASTRALETED_PASSWORD') ?: 'JJ6-A6X-tqT-TAq');
-$ASTRALETED_MOCK = ((string)(getenv('ASTRALETED_MOCK') ?: '')) === '1';
-$REMOTE_ADDR = (string)($_SERVER['REMOTE_ADDR'] ?? '');
-$IS_LOCAL = in_array($REMOTE_ADDR, ['127.0.0.1', '::1'], true);
-
-if (empty($_SESSION['csrf'])) {
-    $_SESSION['csrf'] = bin2hex(random_bytes(24));
-}
-
-function json_out(array $payload, int $status = 200): never {
-    http_response_code($status);
-    header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: no-store, max-age=0');
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
-function json_input(): array {
-    $raw = file_get_contents('php://input');
-    if ($raw === false || trim($raw) === '') return [];
-    $data = json_decode($raw, true);
-    return is_array($data) ? $data : [];
-}
-
-function require_login(): void {
-    if (empty($_SESSION['authenticated'])) {
-        json_out(['ok' => false, 'error' => 'auth_required', 'message' => 'Сначала войдите в кабинет.'], 401);
-    }
-}
-
-function require_csrf(): void {
-    $sent = (string)($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-    $expected = (string)($_SESSION['csrf'] ?? '');
-    if ($sent === '' || $expected === '' || !hash_equals($expected, $sent)) {
-        json_out(['ok' => false, 'error' => 'csrf_failed', 'message' => 'Сессия устарела. Обновите страницу.'], 419);
-    }
-}
-
-function safe_code(string $value, int $max = 80): string {
-    $value = trim($value);
-    if ($value === '' || strlen($value) > $max || !preg_match('/^[a-zA-Z0-9._:-]+$/', $value)) {
-        json_out(['ok' => false, 'error' => 'bad_parameter', 'message' => 'Некорректный параметр.'], 422);
-    }
-    return $value;
-}
-
-function safe_order_id(string $value): string {
-    $value = trim($value);
-    if (!preg_match('/^[a-fA-F0-9-]{16,64}$/', $value)) {
-        json_out(['ok' => false, 'error' => 'bad_order_id', 'message' => 'Некорректный ID заказа.'], 422);
-    }
-    return $value;
-}
-
-function smscodex_request(string $method, string $path, array $query = [], ?array $body = null, bool $requiresKey = true): array {
-    global $SMSCODEX_API_KEY, $ASTRALETED_MOCK;
-
-    if ($ASTRALETED_MOCK) {
-        return mock_smscodex($method, $path, $query, $body);
-    }
-
-    if ($requiresKey && $SMSCODEX_API_KEY === '') {
-        return [503, ['error' => 'server_not_configured', 'message' => 'На сервере не задан SMSCODEX_API_KEY.']];
-    }
-
-    $url = SMSCODEX_BASE . $path;
-    if ($query) $url .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
-
-    $headers = ['Accept: application/json'];
-    if ($requiresKey && $SMSCODEX_API_KEY !== '') $headers[] = 'X-API-Key: ' . $SMSCODEX_API_KEY;
-    if ($body !== null) $headers[] = 'Content-Type: application/json';
-
-    if (function_exists('curl_init')) {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 8,
-            CURLOPT_TIMEOUT => 25,
-            CURLOPT_CUSTOMREQUEST => strtoupper($method),
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_MAXREDIRS => 0,
-        ]);
-        if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        $raw = curl_exec($ch);
-        $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $err = curl_error($ch);
-        curl_close($ch);
-        if ($raw === false) return [502, ['error' => 'upstream_network', 'message' => $err ?: 'Ошибка соединения с SMSCodex.']];
-    } else {
-        $options = [
-            'http' => [
-                'method' => strtoupper($method),
-                'header' => implode("\r\n", $headers),
-                'timeout' => 25,
-                'ignore_errors' => true,
-                'content' => $body !== null ? json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '',
-            ],
-        ];
-        $raw = @file_get_contents($url, false, stream_context_create($options));
-        $status = 0;
-        foreach (($http_response_header ?? []) as $line) {
-            if (preg_match('#^HTTP/\S+\s+(\d+)#', $line, $m)) $status = (int)$m[1];
-        }
-        if ($raw === false) return [502, ['error' => 'upstream_network', 'message' => 'Ошибка соединения с SMSCodex.']];
-    }
-
-    $decoded = json_decode((string)$raw, true);
-    if (!is_array($decoded)) $decoded = ['raw' => trim((string)$raw)];
-    return [$status ?: 502, $decoded];
-}
-
-function mock_smscodex(string $method, string $path, array $query, ?array $body): array {
-    $_SESSION['mock_orders'] ??= [];
-
-    if ($path === '/reference/services') {
-        return [200, ['items' => [
-            ['key' => 'tg', 'name' => 'Telegram'], ['key' => 'wa', 'name' => 'WhatsApp'],
-            ['key' => 'vk', 'name' => 'VK'], ['key' => 'go', 'name' => 'Google'],
-            ['key' => 'ds', 'name' => 'Discord'], ['key' => 'ig', 'name' => 'Instagram'],
-        ]]];
-    }
-    if ($path === '/reference/countries') {
-        return [200, ['items' => [
-            ['id' => 0, 'rus' => 'Россия', 'eng' => 'Russia'],
-            ['id' => 12, 'rus' => 'США', 'eng' => 'United States'],
-            ['id' => 2, 'rus' => 'Казахстан', 'eng' => 'Kazakhstan'],
-            ['id' => 16, 'rus' => 'Великобритания', 'eng' => 'United Kingdom'],
-        ]]];
-    }
-    if ($path === '/wallets/me') return [200, ['currency' => 'USD', 'balance' => '27.42', 'updated_at' => gmdate('c')]];
-    if ($path === '/marketplace/catalog') {
-        $service = (string)($query['service'] ?? 'tg');
-        $country = (string)($query['country'] ?? '0');
-        return [200, ['items' => [[
-            'service_id' => $service, 'service_slug' => $service, 'service_name' => strtoupper($service),
-            'country' => $country, 'country_title' => 'Mock country', 'base_price' => '0.22', 'currency' => 'USD'
-        ]]]];
-    }
-    if ($path === '/marketplace/availability') {
-        return [200, ['items' => [[
-            'service' => (string)($query['service'] ?? 'tg'), 'country' => (string)($query['country'] ?? '0'),
-            'operators' => ['mts', 'beeline'], 'available' => 84, 'min_price' => '0.22', 'max_price' => '0.95',
-            'avg_price' => '0.31', 'service_name' => 'Telegram', 'display_name' => 'Telegram',
-            'price_points' => [['price' => '0.22', 'count' => 40], ['price' => '0.25', 'count' => 44]]
-        ]], 'total' => 1]];
-    }
-    if ($path === '/marketplace/fast-purchase/api' && strtoupper($method) === 'POST') {
-        $id = sprintf('%s-%s-%s-%s-%s', bin2hex(random_bytes(4)), bin2hex(random_bytes(2)), bin2hex(random_bytes(2)), bin2hex(random_bytes(2)), bin2hex(random_bytes(6)));
-        $now = time();
-        $order = [
-            'order_id' => $id, 'order_status' => 'awaiting_confirmation',
-            'service' => (string)($body['service_code'] ?? 'tg'), 'country' => (string)($body['country'] ?? '0'),
-            'operator' => 'mts', 'price' => '0.22', 'currency' => 'USD', 'phone_number' => '79001234567',
-            'expires_at' => gmdate('c', $now + 20 * 60), 'created_at' => gmdate('c', $now), '_mock_created' => $now,
-        ];
-        $_SESSION['mock_orders'][$id] = $order;
-        $public = $order; unset($public['_mock_created']);
-        return [201, $public];
-    }
-    if (preg_match('#^/marketplace/orders/([a-fA-F0-9-]+)(/(cancel|complete))?$#', $path, $m)) {
-        $id = $m[1];
-        if (!isset($_SESSION['mock_orders'][$id])) return [404, ['error' => 'not_found', 'message' => 'Mock order not found']];
-        $order = $_SESSION['mock_orders'][$id];
-        $sub = $m[3] ?? '';
-        if ($sub === 'cancel') {
-            $order['order_status'] = 'cancelled';
-            $_SESSION['mock_orders'][$id] = $order;
-        } elseif ($sub === 'complete') {
-            $order['order_status'] = 'completed';
-            $order['completed_at'] = gmdate('c');
-            $_SESSION['mock_orders'][$id] = $order;
-        } elseif ((time() - (int)$order['_mock_created']) >= 12 && !in_array($order['order_status'], ['cancelled', 'completed'], true)) {
-            $order['order_status'] = 'completed';
-            $order['completed_at'] = gmdate('c');
-            $order['last_code'] = '589613';
-            $order['sms'] = [['code' => '589613', 'sender' => 'Telegram', 'received_at' => gmdate('c')]];
-            $_SESSION['mock_orders'][$id] = $order;
-        }
-        unset($order['_mock_created']);
-        return [200, $order];
-    }
-    return [404, ['error' => 'mock_route_not_found', 'message' => 'Mock route not found']];
-}
-
-if (isset($_GET['__api'])) {
-    $action = (string)$_GET['__api'];
-
-    if ($action === 'bootstrap') {
-        json_out([
-            'ok' => true,
-            'authenticated' => !empty($_SESSION['authenticated']),
-            'username' => (string)($_SESSION['username'] ?? ''),
-            'csrf' => (string)$_SESSION['csrf'],
-            'provider_configured' => $ASTRALETED_MOCK || $SMSCODEX_API_KEY !== '',
-            'mock' => $ASTRALETED_MOCK,
-        ]);
-    }
-
-    if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        require_csrf();
-        $data = json_input();
-        $username = trim((string)($data['username'] ?? ''));
-        $password = (string)($data['password'] ?? '');
-
-        if ($ASTRALETED_PASSWORD === '' && !$IS_LOCAL) {
-            json_out(['ok' => false, 'error' => 'login_not_configured', 'message' => 'На сервере не задан ASTRALETED_PASSWORD.'], 503);
-        }
-
-        $valid = false;
-        if ($ASTRALETED_PASSWORD === '' && $IS_LOCAL) {
-            $valid = $username !== '' && $password !== '';
-        } else {
-            $valid = hash_equals($ASTRALETED_USERNAME, $username) && hash_equals($ASTRALETED_PASSWORD, $password);
-        }
-
-        if (!$valid) json_out(['ok' => false, 'error' => 'bad_credentials', 'message' => 'Неверный логин или пароль.'], 401);
-        session_regenerate_id(true);
-        $_SESSION['authenticated'] = true;
-        $_SESSION['username'] = $username;
-        $_SESSION['csrf'] = bin2hex(random_bytes(24));
-        json_out(['ok' => true, 'username' => $username, 'csrf' => $_SESSION['csrf']]);
-    }
-
-    if ($action === 'logout' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        require_csrf();
-        $_SESSION = [];
-        session_regenerate_id(true);
-        $_SESSION['csrf'] = bin2hex(random_bytes(24));
-        json_out(['ok' => true, 'csrf' => $_SESSION['csrf']]);
-    }
-
-    if ($action === 'services') {
-        [$status, $data] = smscodex_request('GET', '/reference/services', [], null, false);
-        json_out(['ok' => $status >= 200 && $status < 300, 'data' => $data], $status);
-    }
-
-    if ($action === 'countries') {
-        [$status, $data] = smscodex_request('GET', '/reference/countries', [], null, false);
-        json_out(['ok' => $status >= 200 && $status < 300, 'data' => $data], $status);
-    }
-
-    require_login();
-
-    if ($action === 'balance') {
-        [$status, $data] = smscodex_request('GET', '/wallets/me');
-        json_out(['ok' => $status >= 200 && $status < 300, 'data' => $data], $status);
-    }
-
-    if ($action === 'catalog') {
-        $query = ['limit' => 30, 'offset' => 0];
-        if (isset($_GET['country']) && $_GET['country'] !== '') $query['country'] = safe_code((string)$_GET['country']);
-        if (isset($_GET['service']) && $_GET['service'] !== '') $query['service'] = safe_code((string)$_GET['service']);
-        [$status, $data] = smscodex_request('GET', '/marketplace/catalog', $query);
-        json_out(['ok' => $status >= 200 && $status < 300, 'data' => $data], $status);
-    }
-
-    if ($action === 'availability') {
-        $query = ['limit' => 50];
-        if (isset($_GET['country']) && $_GET['country'] !== '') $query['country'] = safe_code((string)$_GET['country']);
-        if (isset($_GET['service']) && $_GET['service'] !== '') $query['service'] = safe_code((string)$_GET['service']);
-        if (isset($_GET['operator']) && $_GET['operator'] !== '') $query['operator'] = safe_code((string)$_GET['operator']);
-        [$status, $data] = smscodex_request('GET', '/marketplace/availability', $query);
-        json_out(['ok' => $status >= 200 && $status < 300, 'data' => $data], $status);
-    }
-
-    if ($action === 'purchase' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        require_csrf();
-        $data = json_input();
-        $service = safe_code((string)($data['service_code'] ?? ''));
-        $country = safe_code((string)($data['country'] ?? ''));
-
-        $now = time();
-        $_SESSION['purchase_times'] = array_values(array_filter((array)($_SESSION['purchase_times'] ?? []), fn($t) => $now - (int)$t < 60));
-        if (count($_SESSION['purchase_times']) >= 6) {
-            json_out(['ok' => false, 'error' => 'local_rate_limit', 'message' => 'Слишком много покупок за минуту. Подождите немного.'], 429);
-        }
-
-        $payload = ['service_code' => $service, 'country' => $country];
-        if (isset($data['price_limit']) && $data['price_limit'] !== '' && $data['price_limit'] !== null) {
-            $price = (float)$data['price_limit'];
-            if ($price <= 0 || $price > 1000) json_out(['ok' => false, 'error' => 'bad_price_limit', 'message' => 'Некорректный лимит цены.'], 422);
-            $payload['price_limit'] = $price;
-        }
-        if (!empty($data['operator'])) $payload['operator'] = safe_code((string)$data['operator']);
-        if (!empty($data['rental_tier'])) $payload['rental_tier'] = safe_code((string)$data['rental_tier']);
-        if (!empty($data['idempotency_key'])) $payload['idempotency_key'] = safe_code((string)$data['idempotency_key'], 120);
-
-        [$status, $up] = smscodex_request('POST', '/marketplace/fast-purchase/api', [], $payload);
-        if ($status >= 200 && $status < 300) $_SESSION['purchase_times'][] = $now;
-        json_out(['ok' => $status >= 200 && $status < 300, 'data' => $up], $status);
-    }
-
-    if ($action === 'order') {
-        $id = safe_order_id((string)($_GET['id'] ?? ''));
-        [$status, $data] = smscodex_request('GET', '/marketplace/orders/' . rawurlencode($id));
-        json_out(['ok' => $status >= 200 && $status < 300, 'data' => $data], $status);
-    }
-
-    if (($action === 'cancel' || $action === 'complete') && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        require_csrf();
-        $data = json_input();
-        $id = safe_order_id((string)($data['order_id'] ?? ''));
-        [$status, $up] = smscodex_request('POST', '/marketplace/orders/' . rawurlencode($id) . '/' . $action);
-        json_out(['ok' => $status >= 200 && $status < 300, 'data' => $up], $status);
-    }
-
-    json_out(['ok' => false, 'error' => 'route_not_found', 'message' => 'Неизвестный API route.'], 404);
-}
-?>
 <!doctype html>
 <html lang="ru">
 <head>
@@ -356,7 +5,7 @@ if (isset($_GET['__api'])) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0a0a0c" />
   <title>Astraleted.ru — виртуальные номера</title>
-  <meta name="description" content="Дизайн-концепт Astraleted.ru — выдача виртуальных номеров под сервисы." />
+  <meta name="description" content="Astraleted.ru — виртуальные номера для приёма SMS-кодов. Интеграция с SMSCodex." />
   <script>document.documentElement.classList.add('js');</script>
   <style>
 :root {
@@ -1574,7 +1223,7 @@ html.js body { opacity: 1; }
         <article class="service-card" data-service-card="Discord"><div class="service-card-icon">DS</div><div><h3>Discord</h3><p>29 номеров доступно</p></div><div class="price">22 ₽</div><button class="icon-btn"><svg><use href="#i-chevron"/></svg></button></article>
         <article class="service-card"><div class="service-card-icon">OT</div><div><h3>Другие</h3><p>Каталог сервисов</p></div><div class="price muted">от 12 ₽</div><button class="icon-btn"><svg><use href="#i-chevron"/></svg></button></article>
       </div>
-      <p class="fineprint">* В макете отражена логика текущего backend: списание происходит при получении кода; отмена до кода не требует возврата.</p>
+      <p class="fineprint">* Цены в карточках витрины пока демонстрационные. В кабинете наличие и стоимость загружаются из SMSCodex в реальном времени.</p>
     </section>
 
     <section class="section shell" id="how">
@@ -1603,42 +1252,42 @@ html.js body { opacity: 1; }
 
     <section class="section shell api-section">
       <div class="api-card">
-        <div class="api-copy"><span class="section-kicker">ИНТЕГРАЦИЯ</span><h2>Фронт уже проектируем под твою API-логику.</h2><p>Авторизация по cookie, каталог сервисов, свободный пул, активные сессии, ожидание кода, история SMS и отмена — эти состояния заложены в интерфейс заранее.</p></div>
-        <div class="code-preview"><div class="code-head"><span>flow.txt</span><span>design only</span></div><pre><code><i>01</i>  login → auth_token
-<i>02</i>  services → availability
-<i>03</i>  session → phone
-<i>04</i>  code/stream → sms code
-<i>05</i>  cancel / release</code></pre></div>
+        <div class="api-copy"><span class="section-kicker">ИНТЕГРАЦИЯ</span><h2>GitHub Pages спереди. Защищённый Worker сзади.</h2><p>Статический index.html обращается только к Cloudflare Worker. Worker хранит секретный ключ SMSCodex, покупает номер, проверяет заказ и возвращает фронтенду только нужные данные.</p></div>
+        <div class="code-preview"><div class="code-head"><span>flow.txt</span><span>LIVE FLOW</span></div><pre><code><i>01</i>  GitHub Pages → Worker
+<i>02</i>  login → signed session
+<i>03</i>  availability → purchase
+<i>04</i>  order polling → last_code
+<i>05</i>  cancel / complete</code></pre></div>
       </div>
     </section>
 
     <section class="section shell" id="faq">
       <div class="section-head narrow"><div><span class="section-kicker">FAQ</span><h2>Коротко о будущем продукте.</h2></div></div>
       <div class="faq-list">
-        <details><summary>Это уже подключено к f-sms.su?<svg><use href="#i-chevron"/></svg></summary><p>Пока нет. Это чистый дизайн-прототип без сетевых запросов и без хранения credentials. Интеграцию подключим на следующем этапе.</p></details>
-        <details><summary>Будет отдельная регистрация и вход?<svg><use href="#i-chevron"/></svg></summary><p>Да. В текущей API-документации есть вход по username/password и cookie auth_token, поэтому экран авторизации уже предусмотрен.</p></details>
-        <details><summary>Можно сделать несколько активных номеров?<svg><use href="#i-chevron"/></svg></summary><p>Дизайн кабинета рассчитан на список активных сессий. Конкретные лимиты и правила выдачи подключим из backend-конфигурации.</p></details>
+        <details><summary>Это уже подключено к SMSCodex?<svg><use href="#i-chevron"/></svg></summary><p>Да. Кабинет работает через Cloudflare Worker: справочники, наличие, баланс, покупка номера, проверка SMS-кода, отмена и завершение заказа.</p></details>
+        <details><summary>Где хранится API-ключ SMSCodex?<svg><use href="#i-chevron"/></svg></summary><p>Только в Secrets Cloudflare Worker. В index.html ключа нет, поэтому GitHub Pages не раскрывает его посетителям.</p></details>
+        <details><summary>Почему нужен Cloudflare Worker?<svg><use href="#i-chevron"/></svg></summary><p>GitHub Pages не выполняет серверный код. Worker выступает маленьким backend-прокси: держит секреты, проверяет вход и делает разрешённые запросы к SMSCodex.</p></details>
       </div>
     </section>
 
     <section class="cta shell">
-      <div><span class="section-kicker">ASTRALETED.RU</span><h2>Тёмный, быстрый, без визуального шума.</h2><p>Следующим этапом можно собрать реальные экраны: вход → кабинет → выдача номера → ожидание SMS → история → пополнение.</p></div>
-      <button class="btn btn-accent btn-large" data-open-login>Открыть UI-демо <svg><use href="#i-arrow"/></svg></button>
+      <div><span class="section-kicker">ASTRALETED.RU</span><h2>Тёмный, быстрый, без визуального шума.</h2><p>Рабочий flow уже собран: вход → кабинет → наличие → покупка номера → ожидание SMS → код → отмена/завершение.</p></div>
+      <button class="btn btn-accent btn-large" data-open-login>Открыть кабинет <svg><use href="#i-arrow"/></svg></button>
     </section>
   </main>
 
-  <footer class="footer"><div class="shell footer-inner"><a class="brand"><span>astraleted</span><b>.</b></a><span>Дизайн-концепт • 2026</span><span>Плоские цвета • SVG UI</span></div></footer>
+  <footer class="footer"><div class="shell footer-inner"><a class="brand"><span>astraleted</span><b>.</b></a><span>SMSCodex integration • 2026</span><span>Плоские цвета • SVG UI</span></div></footer>
 
   <dialog class="modal" data-login-modal>
     <form class="modal-card" data-real-login-form>
       <button class="modal-close" type="button" data-close-login aria-label="Закрыть"><svg><use href="#i-x"/></svg></button>
       <span class="section-kicker">ВХОД</span><h2>Добро пожаловать.</h2>
-      <p>Вход защищает реальную покупку номеров. Логин и пароль задаются на сервере, API-ключ в браузер не передаётся.</p>
+      <p>Вход проверяется Cloudflare Worker. Логин, пароль и API-ключ SMSCodex в браузер не передаются.</p>
       <label>Логин<input name="username" type="text" placeholder="username" autocomplete="username" required /></label>
       <label>Пароль<input name="password" type="password" placeholder="••••••••" autocomplete="current-password" required /></label>
       <div class="form-error" data-login-error hidden></div>
       <button class="btn btn-accent btn-large" type="submit" data-login-submit>Войти в кабинет</button>
-      <small>Для production задайте <code>ASTRALETED_USERNAME</code>, <code>ASTRALETED_PASSWORD</code> и <code>SMSCODEX_API_KEY</code> в окружении PHP.</small>
+      <small>В Cloudflare задайте Secrets <code>ASTRALETED_USERNAME</code>, <code>ASTRALETED_PASSWORD</code>, <code>SESSION_SECRET</code> и <code>SMSCODEX_API_KEY</code>.</small>
     </form>
   </dialog>
 
@@ -1663,7 +1312,7 @@ html.js body { opacity: 1; }
 
           <div class="provider-warning" data-provider-warning hidden>
             <b>SMSCodex ещё не настроен.</b>
-            <span>Задайте серверную переменную <code>SMSCODEX_API_KEY</code>. Ключ не должен находиться внутри HTML/JavaScript.</span>
+            <span>Добавьте Secret <code>SMSCODEX_API_KEY</code> в Cloudflare Worker. Ключ не должен находиться внутри HTML/JavaScript.</span>
           </div>
 
           <div class="demo-columns live-columns">
@@ -1683,7 +1332,7 @@ html.js body { opacity: 1; }
               </div>
 
               <button type="button" class="btn btn-accent btn-large full" data-buy-number>Получить номер</button>
-              <small class="builder-note">Покупка идёт через сервер Astraleted → SMSCodex. Повторный клик защищён idempotency key.</small>
+              <small class="builder-note">Покупка идёт GitHub Pages → Astraleted Worker → SMSCodex. Повторный клик защищён idempotency key.</small>
             </div>
 
             <div class="live-order-card" data-order-card>
@@ -1722,7 +1371,7 @@ html.js body { opacity: 1; }
         <section class="app-panel" data-app-panel="balance">
           <div class="demo-title"><div><span class="section-kicker">КОШЕЛЁК</span><h2>Баланс SMSCodex</h2></div><button type="button" class="btn btn-ghost" data-refresh-balance>Обновить</button></div>
           <div class="balance-board"><span>Доступно</span><strong data-balance-full>—</strong><small data-balance-updated>Пока не загружено</small></div>
-          <p class="panel-copy">Баланс берётся сервером из <code>/api/v1/wallets/me</code>. API-ключ остаётся на backend.</p>
+          <p class="panel-copy">Баланс запрашивает Worker через <code>/api/v1/wallets/me</code>. API-ключ остаётся в Cloudflare Secrets.</p>
         </section>
 
         <section class="app-panel" data-app-panel="profile">
@@ -1731,7 +1380,7 @@ html.js body { opacity: 1; }
             <div><span>Пользователь</span><b data-profile-user>—</b></div>
             <div><span>Провайдер</span><b>SMSCodex</b></div>
             <div><span>Режим</span><b data-profile-mode>LIVE</b></div>
-            <div><span>Ключ</span><b>скрыт на сервере</b></div>
+            <div><span>Ключ</span><b>Cloudflare Secret</b></div>
           </div>
           <button type="button" class="btn btn-ghost" data-logout>Выйти</button>
         </section>
@@ -1965,17 +1614,6 @@ qa('[data-open-login]').forEach(btn => btn.addEventListener('click', () => {
 
 q('[data-close-login]')?.addEventListener('click', () => loginModal?.close());
 
-q('[data-login-form]')?.addEventListener('submit', e => {
-  e.preventDefault();
-  const form = e.currentTarget;
-  if (!form.reportValidity()) return;
-  demoLoggedIn = true;
-  loginModal?.close();
-  qa('[data-open-login]').forEach(btn => btn.textContent = 'Кабинет');
-  setTimeout(() => demoModal?.showModal(), 120);
-});
-
-qa('[data-open-login]').forEach(btn => btn.addEventListener('click', () => demoModal?.showModal()));
 qa('[data-scroll-services]').forEach(btn => btn.addEventListener('click', () => {
   q('#services')?.scrollIntoView({behavior:'smooth'});
   mobileNav?.classList.remove('open');
@@ -2008,39 +1646,69 @@ qa('dialog').forEach(dialog => {
 
 
 /* ──────────────────────────────────────────────────────────────
-   Real SMSCodex functionality (through same-origin PHP proxy)
+   LIVE SMSCodex functionality through Cloudflare Worker
    ────────────────────────────────────────────────────────────── */
+
+// После deploy Worker вставьте сюда его URL, например:
+// const WORKER_API_URL = 'https://astraleted-api.your-subdomain.workers.dev';
+const WORKER_API_URL = 'https://REPLACE-ME.workers.dev';
+
 const live = {
-  csrf: '', authenticated: false, username: '', providerConfigured: false, mock: false,
+  token: sessionStorage.getItem('astraleted_session_token') || '',
+  authenticated: false, username: '', providerConfigured: false, mock: false,
   services: [], countries: [], order: null, pollTimer: 0, clockTimer: 0, pendingServiceName: ''
 };
 
+const workerConfigured = () => /^https:\/\/[^/]+(?:\.workers\.dev|astraleted\.ru|[^/]+)$/i.test(WORKER_API_URL)
+  && !WORKER_API_URL.includes('REPLACE-ME');
+
 const apiCall = async (action, {method='GET', params={}, body=null} = {}) => {
-  const url = new URL(location.href);
-  url.search = '';
-  url.hash = '';
-  url.searchParams.set('__api', action);
-  Object.entries(params).forEach(([k,v]) => { if (v !== '' && v !== null && v !== undefined) url.searchParams.set(k, v); });
-  const headers = { 'Accept':'application/json' };
-  if (method !== 'GET') {
-    headers['Content-Type'] = 'application/json';
-    if (live.csrf) headers['X-CSRF-Token'] = live.csrf;
+  if (!workerConfigured()) {
+    const e = new Error('Сначала вставьте URL Cloudflare Worker в WORKER_API_URL внутри index.html.');
+    e.code = 'worker_not_configured';
+    throw e;
   }
+  const url = new URL(WORKER_API_URL);
+  url.searchParams.set('action', action);
+  Object.entries(params).forEach(([k,v]) => {
+    if (v !== '' && v !== null && v !== undefined) url.searchParams.set(k, v);
+  });
+  const headers = { 'Accept':'application/json' };
+  if (live.token) headers['Authorization'] = `Bearer ${live.token}`;
+  if (method !== 'GET') headers['Content-Type'] = 'application/json';
+
   let response;
   try {
-    response = await fetch(url.toString(), { method, headers, body: body === null ? undefined : JSON.stringify(body), credentials:'same-origin' });
+    response = await fetch(url.toString(), {
+      method,
+      headers,
+      body: body === null ? undefined : JSON.stringify(body),
+      mode: 'cors',
+      cache: 'no-store'
+    });
   } catch (err) {
-    const e = new Error('Сервер Astraleted недоступен. Если файл открыт как .html/file://, запустите PHP-версию через веб-сервер.');
-    e.code = 'network'; throw e;
+    const e = new Error('Astraleted API недоступен. Проверьте URL Worker и ALLOWED_ORIGINS в Cloudflare.');
+    e.code = 'network';
+    throw e;
   }
+
   let payload = {};
   try { payload = await response.json(); } catch (_) {}
   if (!response.ok || payload.ok === false) {
     const upstream = payload?.data || payload || {};
     const code = upstream?.error || upstream?.code || payload?.error || `http_${response.status}`;
     const message = upstream?.message || upstream?.detail || payload?.message || humanApiError(code, response.status);
+    if (response.status === 401 && code === 'auth_required') {
+      live.token = '';
+      live.authenticated = false;
+      sessionStorage.removeItem('astraleted_session_token');
+      updateAuthUI?.();
+    }
     const e = new Error(typeof message === 'string' ? message : humanApiError(code, response.status));
-    e.code = code; e.status = response.status; e.payload = payload; throw e;
+    e.code = code;
+    e.status = response.status;
+    e.payload = payload;
+    throw e;
   }
   return payload;
 };
@@ -2054,9 +1722,10 @@ const humanApiError = (code, status=0) => ({
   max_active_reservations_exceeded: 'Достигнут лимит активных номеров. Завершите текущую активацию.',
   rental_exceeds_number_lifetime: 'Запрошенный срок аренды слишком большой для этого номера.',
   auth_required: 'Сначала войдите в кабинет.',
-  server_not_configured: 'На сервере не задан SMSCODEX_API_KEY.',
-  login_not_configured: 'На сервере не настроен пароль Astraleted.',
-  local_rate_limit: 'Слишком много покупок за минуту. Подождите немного.',
+  server_not_configured: 'В Cloudflare Worker не задан SMSCODEX_API_KEY.',
+  login_not_configured: 'В Cloudflare Worker не настроены данные входа.',
+  origin_not_allowed: 'Этот домен не разрешён в ALLOWED_ORIGINS Worker.',
+  worker_not_configured: 'Не указан URL Cloudflare Worker.',
 }[code] || (status ? `Ошибка API (${status}).` : 'Не удалось выполнить запрос.'));
 
 const toast = (message, type='') => {
@@ -2171,7 +1840,7 @@ const refreshBalance = async () => {
 
 const buyNumber = async () => {
   if (!live.authenticated) { loginModal?.showModal(); return; }
-  if (!live.providerConfigured) { toast('Сначала настройте SMSCODEX_API_KEY на сервере.', 'error'); return; }
+  if (!live.providerConfigured) { toast('Сначала добавьте SMSCODEX_API_KEY в Secrets Cloudflare Worker.', 'error'); return; }
   if (live.order && !['completed','cancelled','refunded'].includes(live.order.order_status)) { toast('Сначала завершите текущую активацию.', 'error'); return; }
   const btn = q('[data-buy-number]'); setBusy(btn, true, 'Покупаем…');
   const payload = {
@@ -2287,7 +1956,9 @@ q('[data-real-login-form]')?.addEventListener('submit', async e => {
   e.preventDefault(); const form=e.currentTarget; const btn=q('[data-login-submit]',form); const err=q('[data-login-error]',form); err.hidden=true; setBusy(btn,true,'Входим…');
   try {
     const data=Object.fromEntries(new FormData(form)); const res=await apiCall('login',{method:'POST',body:data});
-    live.authenticated=true; live.username=res.username||data.username; live.csrf=res.csrf||live.csrf; updateAuthUI(); loginModal?.close(); await Promise.all([refreshBalance(), refreshMarketSnapshot()]); setTimeout(()=>openApp('numbers'),100);
+    live.token=res.token||''; live.authenticated=!!live.token; live.username=res.username||data.username;
+    sessionStorage.setItem('astraleted_session_token', live.token);
+    updateAuthUI(); loginModal?.close(); await Promise.all([refreshBalance(), refreshMarketSnapshot()]); setTimeout(()=>openApp('numbers'),100);
   } catch(ex) { err.textContent=ex.message; err.hidden=false; }
   finally { setBusy(btn,false); }
 });
@@ -2306,8 +1977,10 @@ q('[data-copy-phone]')?.addEventListener('click',()=>copyText(String(live.order?
 q('[data-copy-code]')?.addEventListener('click',()=>copyText(String(live.order?.last_code||'')));
 q('[data-clear-history]')?.addEventListener('click',()=>{localStorage.removeItem(historyKey);renderHistory();toast('Локальная история очищена.');});
 q('[data-logout]')?.addEventListener('click',async()=>{
-  try { const res=await apiCall('logout',{method:'POST',body:{}}); live.csrf=res.csrf||''; } catch(_){}
-  live.authenticated=false; live.username=''; demoLoggedIn=false; stopPolling(); demoModal?.close(); updateAuthUI(); toast('Вы вышли.');
+  try { await apiCall('logout',{method:'POST',body:{}}); } catch(_){}
+  live.token=''; live.authenticated=false; live.username=''; demoLoggedIn=false;
+  sessionStorage.removeItem('astraleted_session_token');
+  stopPolling(); demoModal?.close(); updateAuthUI(); toast('Вы вышли.');
 });
 
 qa('[data-service-card]').forEach(card=>card.addEventListener('click',e=>{
@@ -2318,8 +1991,16 @@ qa('[data-service-card]').forEach(card=>card.addEventListener('click',e=>{
 }));
 
 const bootstrapLive = async () => {
+  if (!workerConfigured()) {
+    live.providerConfigured=false; updateAuthUI();
+    toast('Настройка: вставьте URL Cloudflare Worker в WORKER_API_URL.', 'error');
+    return;
+  }
   try {
-    const b=await apiCall('bootstrap'); live.csrf=b.csrf||''; live.authenticated=!!b.authenticated; live.username=b.username||''; live.providerConfigured=!!b.provider_configured; live.mock=!!b.mock; updateAuthUI();
+    const b=await apiCall('bootstrap');
+    live.authenticated=!!b.authenticated; live.username=b.username||''; live.providerConfigured=!!b.provider_configured; live.mock=!!b.mock;
+    if (!live.authenticated && live.token) { live.token=''; sessionStorage.removeItem('astraleted_session_token'); }
+    updateAuthUI();
     await populateReferences();
     if (live.authenticated) {
       await refreshBalance();
