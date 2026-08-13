@@ -1674,7 +1674,9 @@ const apiCall = async (action, {method='GET', params={}, body=null} = {}) => {
     if (v !== '' && v !== null && v !== undefined) url.searchParams.set(k, v);
   });
   const headers = { 'Accept':'application/json' };
-  if (live.token) headers['Authorization'] = `Bearer ${live.token}`;
+  // Public endpoints must not carry Authorization: that would trigger an unnecessary CORS preflight.
+  const publicActions = new Set(['health','bootstrap','login','services','countries','rental-tiers']);
+  if (live.token && !publicActions.has(action)) headers['Authorization'] = `Bearer ${live.token}`;
   if (method !== 'GET') headers['Content-Type'] = 'application/json';
 
   let response;
