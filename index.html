@@ -555,7 +555,7 @@
         <div>
           <div class="eyebrow">Главное меню</div>
           <h1>Выберите сервис</h1>
-          <p>Выберите нужный сервис и количество номеров.</p>
+          <p>Выберите VK и количество номеров. Покупка выполняется через SMSCodex.</p>
         </div>
 
         <div class="dashboard-top">
@@ -635,6 +635,16 @@
 
 <script>
   const TELEGRAM_BOT_USERNAME = 'AstraletedSMS_bot';
+
+  // SMSCodex: пока подключена только покупка номеров VK.
+  // Вставьте свой полный API-ключ вместо YOUR_API_KEY.
+  const SMSCODEX_BASE_URL = 'https://smscodex.com';
+  const SMSCODEX_API_KEY = 'api_XX-Ys_FaL0eneaRk17IQ5vjoCFdEPS4pQrWXt4DJaeo';
+  const VK_SERVICE_CODE = 'vk';
+  const VK_COUNTRY = '0'; // 0 = Россия по справочнику SMSCodex
+  const VK_API_PRICE_LIMIT = 0.8; // максимальная закупочная цена одного номера
+
+  // Цена, которую показываем пользователю в интерфейсе.
   const VK_PRICE = 0.8;
 
   const authShell = document.getElementById('auth-shell');
@@ -780,7 +790,7 @@
   function updateSummary() {
     summaryTotal.textContent = (VK_PRICE * selectedQty).toFixed(1) + ' USDT';
     summaryQty.textContent = pluralNumbers(selectedQty);
-    getNumbersBtn.textContent = selectedQty === 1 ? 'Получить номер' : 'Получить ' + selectedQty + ' номера';
+    getNumbersBtn.textContent = 'Получить ' + pluralNumbers(selectedQty);
   }
 
   function openQuantityModal() {
@@ -812,39 +822,110 @@
   });
 
   /*
-    Backend contract for real issuance:
-    POST /api/orders
-    body: { service: "vk", quantity: 1..10 }
-    expected response: { numbers: [{ id, phone }] }
+    SMSCodex — только покупка номера VK.
 
-    On file:// / localhost a demo result is shown so the interface can be tested.
+    POST https://smscodex.com/api/v1/marketplace/fast-purchase/api
+    X-API-Key: <ваш ключ>
+    body: { service_code: "vk", country: "0", price_limit: 0.8 }
+
+    Эндпоинт покупает ОДИН номер за запрос, поэтому при выборе 2x–10x
+    выполняем несколько последовательных запросов. Получение SMS, complete
+    и cancel здесь намеренно пока не реализованы.
   */
-  async function requestNumbers(quantity) {
-    if (isLocalPreview()) {
-      await new Promise(resolve => setTimeout(resolve, 650));
-      return Array.from({ length: quantity }, (_, index) => ({
-        id: 'demo-' + Date.now() + '-' + index,
-        phone: '+1 202-555-' + String(101 + index).padStart(4, '0'),
-        demo: true
-      }));
+
+  function apiErrorMessage(data, status) {
+    if (typeof data === 'string' && data.trim()) return data.trim();
+
+    if (data && typeof data.detail === 'string') {
+      return data.detail;
     }
 
-    const response = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service: 'vk', quantity })
-    });
+    if (data && Array.isArray(data.detail)) {
+      const messages = data.detail
+        .map(item => item && item.msg)
+        .filter(Boolean);
+      if (messages.length) return messages.join('; ');
+    }
+
+    if (data && typeof data.message === 'string') {
+      return data.message;
+    }
+
+    return 'SMSCodex вернул ошибку ' + status + '.';
+  }
+
+  function formatPhoneNumber(value) {
+    const phone = String(value || '').trim();
+    if (!phone) return '';
+    return /^\d+$/.test(phone) ? '+' + phone : phone;
+  }
+
+  async function purchaseVkNumber() {
+    if (!SMSCODEX_API_KEY || SMSCODEX_API_KEY === 'YOUR_API_KEY' || SMSCODEX_API_KEY.includes('***')) {
+      throw new Error('Укажите полный SMSCodex API-ключ в константе SMSCODEX_API_KEY.');
+    }
+
+    let response;
+    try {
+      response = await fetch(SMSCODEX_BASE_URL + '/api/v1/marketplace/fast-purchase/api', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-API-Key': SMSCODEX_API_KEY
+        },
+        body: JSON.stringify({
+          service_code: VK_SERVICE_CODE,
+          country: VK_COUNTRY,
+          price_limit: VK_API_PRICE_LIMIT
+        })
+      });
+    } catch (error) {
+      throw new Error('Не удалось подключиться к SMSCodex. Проверьте интернет и CORS для вашего домена.');
+    }
+
+    const raw = await response.text();
+    let data = null;
+
+    if (raw) {
+      try { data = JSON.parse(raw); }
+      catch { data = raw; }
+    }
 
     if (!response.ok) {
-      throw new Error('Сервер не смог выдать номера.');
+      throw new Error(apiErrorMessage(data, response.status));
     }
 
-    const data = await response.json();
-    if (!data || !Array.isArray(data.numbers)) {
-      throw new Error('Некорректный ответ сервера.');
+    if (!data || typeof data !== 'object' || !data.order_id || !data.phone_number) {
+      throw new Error('SMSCodex вернул ответ без order_id или phone_number.');
     }
 
-    return data.numbers;
+    return {
+      id: data.order_id,
+      orderId: data.order_id,
+      phone: formatPhoneNumber(data.phone_number),
+      status: data.order_status || '',
+      price: data.price || '',
+      currency: data.currency || '',
+      expiresAt: data.expires_at || ''
+    };
+  }
+
+  async function requestNumbers(quantity) {
+    const purchased = [];
+
+    for (let index = 0; index < quantity; index++) {
+      modalMessage.textContent = 'Покупаем номер ' + (index + 1) + ' из ' + quantity + '…';
+      modalMessage.className = 'modal-message';
+
+      try {
+        purchased.push(await purchaseVkNumber());
+      } catch (error) {
+        return { purchased, error };
+      }
+    }
+
+    return { purchased, error: null };
   }
 
   function appendNumbers(numbers) {
@@ -865,7 +946,7 @@
       phone.textContent = item.phone;
       const note = document.createElement('div');
       note.className = 'number-note';
-      note.textContent = item.demo ? 'Демо-номер для предпросмотра' : 'VK · номер выдан';
+      note.textContent = item.orderId ? 'VK · заказ ' + item.orderId.slice(0, 8) + '…' : 'VK · номер куплен';
       details.append(phone, note);
 
       const copy = document.createElement('button');
@@ -895,15 +976,39 @@
     modalMessage.className = 'modal-message';
 
     try {
-      const numbers = await requestNumbers(selectedQty);
-      appendNumbers(numbers);
+      const requestedQty = selectedQty;
+      const result = await requestNumbers(requestedQty);
+
+      if (result.purchased.length) {
+        appendNumbers(result.purchased);
+      }
+
+      if (result.error) {
+        const bought = result.purchased.length;
+        const remaining = requestedQty - bought;
+
+        modalMessage.textContent = bought
+          ? 'Куплено ' + bought + ' из ' + requestedQty + '. Ошибка: ' + (result.error.message || 'покупка остановлена.')
+          : (result.error.message || 'Не удалось купить номер.');
+        modalMessage.className = 'modal-message error';
+
+        // Если часть номеров уже купилась, повторная кнопка будет покупать
+        // только оставшееся количество, чтобы не сделать дубль.
+        if (remaining > 0 && bought > 0) {
+          selectedQty = remaining;
+          renderQtyButtons();
+          updateSummary();
+        }
+        return;
+      }
+
       closeQuantityModal();
     } catch (error) {
-      modalMessage.textContent = error.message || 'Не удалось получить номера.';
+      modalMessage.textContent = error.message || 'Не удалось купить номера.';
       modalMessage.className = 'modal-message error';
     } finally {
       getNumbersBtn.disabled = false;
-      getNumbersBtn.textContent = oldText;
+      updateSummary();
     }
   });
 
