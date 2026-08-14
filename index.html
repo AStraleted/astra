@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Личный кабинет</title>
+<style>
+  :root {
+    --bg: #090909;
+    --panel: #111111;
+    --panel-2: #151515;
+    --panel-hover: #191919;
+    --border: #2A2A2A;
+    --border-strong: #363636;
+    --text: #F2F2F2;
+    --text-secondary: #8A8A8A;
+    --text-soft: #666666;
+    --primary: #ECECEC;
+    --primary-hover: #FFFFFF;
+    --primary-text: #111111;
+    --success: #68D391;
+    --error: #F07B72;
+    --vk: #2787F5;
+    --shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+
+  html, body { min-height: 100%; }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button { font: inherit; }
+
+  .app {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: 68px 1fr;
+  }
+
+  .topbar {
+    height: 68px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 26px;
+    background: rgba(9, 9, 9, 0.96);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .brand, .status, .user-mini {
+    display: flex;
+    align-items: center;
+  }
+
+  .brand { gap: 12px; min-width: 0; }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: var(--panel);
+  }
+
+  .brand-mark svg { width: 18px; height: 18px; fill: var(--text); }
+
+  .brand-name {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
+  .status { gap: 10px; color: #B6B6B6; font-size: 13px; white-space: nowrap; }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 3px rgba(104, 211, 145, 0.08);
+  }
+
+  .content {
+    min-height: calc(100vh - 68px);
+    padding: 52px 24px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .content::before {
+    content: "";
+    position: fixed;
+    width: 620px;
+    height: 620px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.022);
+    filter: blur(80px);
+    top: 46%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .shell {
+    width: min(100%, 1000px);
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .auth-shell { width: min(100%, 560px); }
+
+  .page-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 26px;
+  }
+
+  .eyebrow { color: var(--text-secondary); font-size: 13px; margin-bottom: 8px; }
+
+  .page-heading h1 {
+    font-size: clamp(32px, 5vw, 44px);
+    line-height: 1.08;
+    font-weight: 730;
+    letter-spacing: -0.045em;
+  }
+
+  .page-heading p {
+    color: var(--text-secondary);
+    max-width: 430px;
+    margin-top: 10px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+  }
+
+  .auth-card { padding: 28px; }
+
+  .card-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 26px;
+  }
+
+  .card-title-row h2 {
+    font-size: 18px;
+    line-height: 1.3;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    margin-bottom: 7px;
+  }
+
+  .subtitle { color: var(--text-secondary); font-size: 14px; max-width: 390px; }
+
+  .tg-icon-box {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: var(--panel-2);
+  }
+
+  .tg-icon-box svg { width: 20px; height: 20px; fill: #BFBFBF; }
+
+  .telegram-area { display: grid; gap: 12px; }
+  .telegram-widget { min-height: 42px; display: flex; align-items: center; justify-content: flex-start; }
+  .telegram-widget iframe { border-radius: 10px; overflow: hidden; }
+
+  .btn-primary, .btn-ghost, .copy-btn, .close-btn {
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background .16s ease, border-color .16s ease, transform .16s ease;
+  }
+
+  .btn-primary {
+    min-height: 46px;
+    width: 100%;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--primary);
+    color: var(--primary-text);
+    border: 1px solid transparent;
+    font-weight: 650;
+  }
+
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-primary:active, .btn-ghost:active, .copy-btn:active { transform: translateY(1px); }
+  .btn-primary svg { width: 18px; height: 18px; fill: currentColor; }
+
+  .btn-ghost {
+    min-height: 42px;
+    padding: 0 16px;
+    background: var(--panel-2);
+    border: 1px solid var(--border-strong);
+    color: #D9D9D9;
+    font-weight: 600;
+  }
+
+  .btn-ghost:hover { background: var(--panel-hover); border-color: #414141; }
+
+  .message { min-height: 20px; margin-top: 14px; color: var(--text-secondary); font-size: 13px; }
+  .message.error { color: var(--error); }
+  .message.success { color: var(--success); }
+
+  .hint {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    color: var(--text-soft);
+    font-size: 12px;
+  }
+
+  .view { animation: fadeIn .22s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Dashboard */
+  .dashboard-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+  }
+
+  .user-mini { gap: 10px; }
+
+  .mini-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid var(--border-strong);
+    background: var(--panel-2);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+  }
+
+  .mini-user-text { min-width: 0; }
+  .mini-name { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 210px; }
+  .mini-username { color: var(--text-secondary); font-size: 12px; }
+
+  .service-card {
+    width: 100%;
+    text-align: left;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .service-button {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 18px;
+    padding: 24px;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .service-button:hover { background: rgba(255,255,255,.018); }
+
+  .service-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 15px;
+    display: grid;
+    place-items: center;
+    background: var(--vk);
+    color: white;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+
+  .service-name { font-size: 18px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 4px; }
+  .service-meta { color: var(--text-secondary); font-size: 13px; }
+
+  .service-price { text-align: right; }
+  .price-value { font-size: 18px; font-weight: 750; letter-spacing: -.02em; }
+  .price-caption { color: var(--text-secondary); font-size: 12px; margin-top: 2px; }
+
+  .chevron {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border-strong);
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    margin-left: 6px;
+  }
+  .chevron svg { width: 16px; height: 16px; stroke: #BEBEBE; fill: none; stroke-width: 2; }
+
+  .section-label {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin: 30px 0 12px;
+  }
+
+  .empty-card {
+    padding: 26px;
+    text-align: center;
+    color: var(--text-secondary);
+  }
+
+  .empty-icon {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: var(--panel-2);
+  }
+  .empty-icon svg { width: 20px; height: 20px; stroke: #999; fill: none; stroke-width: 1.8; }
+
+  .numbers-list { display: grid; gap: 10px; }
+
+  .number-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: var(--panel);
+  }
+
+  .number-index {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  .phone-number { font-size: 16px; font-weight: 650; letter-spacing: .01em; }
+  .number-note { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+  .copy-btn {
+    min-height: 34px;
+    padding: 0 12px;
+    background: var(--panel-2);
+    border: 1px solid var(--border-strong);
+    color: #DADADA;
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .copy-btn:hover { background: var(--panel-hover); }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(0,0,0,.72);
+    backdrop-filter: blur(8px);
+  }
+
+  .modal {
+    width: min(100%, 500px);
+    background: #101010;
+    border: 1px solid var(--border-strong);
+    border-radius: 18px;
+    box-shadow: 0 24px 90px rgba(0,0,0,.6);
+    padding: 24px;
+  }
+
+  .modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 22px;
+  }
+
+  .modal-head h2 { font-size: 20px; letter-spacing: -.025em; margin-bottom: 5px; }
+  .modal-head p { color: var(--text-secondary); font-size: 13px; }
+
+  .close-btn {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border: 1px solid var(--border-strong);
+    background: var(--panel-2);
+    color: #BDBDBD;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .close-btn:hover { background: var(--panel-hover); }
+
+  .qty-title { font-size: 13px; color: var(--text-secondary); margin-bottom: 11px; }
+
+  .qty-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .qty-btn {
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    color: #D8D8D8;
+    background: var(--panel-2);
+    cursor: pointer;
+    font-weight: 650;
+  }
+  .qty-btn:hover { border-color: #4A4A4A; background: var(--panel-hover); }
+  .qty-btn.active { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+
+  .order-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 20px 0;
+    padding: 15px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+
+  .summary-label { color: var(--text-secondary); font-size: 12px; }
+  .summary-total { font-size: 18px; font-weight: 750; margin-top: 2px; }
+  .summary-qty { color: #CFCFCF; font-size: 13px; text-align: right; }
+
+  .modal-message { min-height: 18px; margin-top: 12px; color: var(--text-secondary); font-size: 12px; }
+  .modal-message.error { color: var(--error); }
+
+  @media (max-width: 700px) {
+    .app { grid-template-rows: 60px 1fr; }
+    .topbar { height: 60px; padding: 0 16px; }
+    .status { display: none; }
+    .content { min-height: calc(100vh - 60px); padding: 34px 16px 60px; }
+    .page-heading { align-items: flex-start; flex-direction: column; }
+    .dashboard-top { width: 100%; }
+    .service-button { grid-template-columns: auto 1fr; padding: 19px; }
+    .service-price { grid-column: 2; text-align: left; display: flex; align-items: baseline; gap: 8px; }
+    .chevron { display: none; }
+    .number-row { grid-template-columns: auto 1fr; }
+    .copy-btn { grid-column: 2; justify-self: start; }
+  }
+
+  @media (max-width: 420px) {
+    .brand-name { font-size: 15px; }
+    .auth-card, .modal { padding: 20px; border-radius: 15px; }
+    .page-heading h1 { font-size: 34px; }
+    .qty-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .qty-btn { height: 40px; }
+    .mini-user-text { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .view { animation: none; }
+    .btn-primary, .btn-ghost, .copy-btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 7.5L4.5 6 12 2.5 19.5 6 12 9.5zM2 17l10 5 10-5v-3l-10 5-10-5v3zm0-5l10 5 10-5V9l-10 5L2 9v3z"/></svg>
+      </div>
+      <span class="brand-name">Личный кабинет</span>
+    </div>
+
+    <div class="status" aria-label="Статус сервиса">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span>Сервис работает стабильно</span>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- Telegram login -->
+    <div class="shell auth-shell" id="auth-shell">
+      <div class="page-heading">
+        <div>
+          <div class="eyebrow">Авторизация</div>
+          <h1>Добро пожаловать</h1>
+        </div>
+      </div>
+
+      <section class="view card auth-card" id="view-login">
+        <div class="card-title-row">
+          <div>
+            <h2>Вход через Telegram</h2>
+            <p class="subtitle">Единственный способ входа в личный кабинет.</p>
+          </div>
+          <div class="tg-icon-box" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M9.04 15.31l-.38 5.32c.54 0 .78-.23 1.06-.5l2.55-2.44 5.28 3.87c.97.53 1.66.25 1.92-.9L23.9 4.6c.31-1.43-.52-1.99-1.46-1.64L1.9 11.14c-1.4.54-1.38 1.32-.24 1.67l5.2 1.62L18.98 6.3c.57-.37 1.08-.17.66.2L9.04 15.31z"/></svg>
+          </div>
+        </div>
+
+        <div class="telegram-area">
+          <div class="telegram-widget" id="telegram-widget-container" hidden></div>
+          <button class="btn-primary" id="btn-telegram" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.04 15.31l-.38 5.32c.54 0 .78-.23 1.06-.5l2.55-2.44 5.28 3.87c.97.53 1.66.25 1.92-.9L23.9 4.6c.31-1.43-.52-1.99-1.46-1.64L1.9 11.14c-1.4.54-1.38 1.32-.24 1.67l5.2 1.62L18.98 6.3c.57-.37 1.08-.17.66.2L9.04 15.31z"/></svg>
+            Войти через Telegram
+          </button>
+        </div>
+
+        <p class="message" id="form-message" aria-live="polite"></p>
+        <p class="hint">На рабочем домене используется Telegram Login Widget. Для локального файла кнопка открывает демо-кабинет для проверки интерфейса.</p>
+      </section>
+    </div>
+
+    <!-- Main menu after login -->
+    <div class="shell view" id="dashboard" hidden>
+      <div class="page-heading">
+        <div>
+          <div class="eyebrow">Главное меню</div>
+          <h1>Выберите сервис</h1>
+          <p>Выберите VK и количество номеров. Покупка выполняется через SMSCodex.</p>
+        </div>
+
+        <div class="dashboard-top">
+          <div class="user-mini">
+            <img class="mini-avatar" id="mini-avatar-img" alt="Аватар" hidden>
+            <div class="mini-avatar" id="mini-avatar-placeholder">U</div>
+            <div class="mini-user-text">
+              <div class="mini-name" id="mini-name">Пользователь</div>
+              <div class="mini-username" id="mini-username">Telegram</div>
+            </div>
+          </div>
+          <button class="btn-ghost" id="btn-logout" type="button">Выйти</button>
+        </div>
+      </div>
+
+      <div class="section-label">Доступные сервисы</div>
+
+      <section class="card service-card">
+        <button class="service-button" id="vk-service" type="button">
+          <div class="service-icon">VK</div>
+          <div>
+            <div class="service-name">VK</div>
+            <div class="service-meta">Выбрать сервис</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;">
+            <div class="service-price">
+              <div class="price-value">0.8 USDT</div>
+              <div class="price-caption">за 1 номер</div>
+            </div>
+            <div class="chevron" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            </div>
+          </div>
+        </button>
+      </section>
+
+      <div class="section-label">Полученные номера</div>
+
+      <section id="numbers-empty" class="card empty-card">
+        <div class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M7 4h10v16H7zM10 7h4M10 17h4"/></svg>
+        </div>
+        <div>Здесь появятся выданные номера</div>
+      </section>
+
+      <div class="numbers-list" id="numbers-list" hidden></div>
+    </div>
+  </main>
+</div>
+
+<!-- Quantity modal -->
+<div class="modal-backdrop" id="quantity-modal" hidden>
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-head">
+      <div>
+        <h2 id="modal-title">VK — количество</h2>
+        <p>Цена за один номер: 0.8 USDT</p>
+      </div>
+      <button class="close-btn" id="modal-close" type="button" aria-label="Закрыть">×</button>
+    </div>
+
+    <div class="qty-title">Выберите количество, до 10 шт.</div>
+    <div class="qty-grid" id="qty-grid"></div>
+
+    <div class="order-summary">
+      <div>
+        <div class="summary-label">Итого</div>
+        <div class="summary-total" id="summary-total">0.8 USDT</div>
+      </div>
+      <div class="summary-qty" id="summary-qty">1 номер</div>
+    </div>
+
+    <button class="btn-primary" id="get-numbers" type="button">Получить номер</button>
+    <div class="modal-message" id="modal-message" aria-live="polite"></div>
+  </section>
+</div>
+
+<script>
+  const TELEGRAM_BOT_USERNAME = 'AstraletedSMS_bot';
+
+  // Покупка VK идёт через наш backend-прокси на том же домене.
+  // API-ключ SMSCodex хранится только в server.js / переменной окружения.
+  const VK_PURCHASE_ENDPOINT = '/api/buy-vk';
+
+  // Цена, которую показываем пользователю в интерфейсе.
+  const VK_PRICE = 0.8;
+
+  const authShell = document.getElementById('auth-shell');
+  const dashboard = document.getElementById('dashboard');
+  const btnTelegram = document.getElementById('btn-telegram');
+  const btnLogout = document.getElementById('btn-logout');
+  const widgetContainer = document.getElementById('telegram-widget-container');
+  const message = document.getElementById('form-message');
+
+  const miniAvatarImg = document.getElementById('mini-avatar-img');
+  const miniAvatarPlaceholder = document.getElementById('mini-avatar-placeholder');
+  const miniName = document.getElementById('mini-name');
+  const miniUsername = document.getElementById('mini-username');
+
+  const vkService = document.getElementById('vk-service');
+  const quantityModal = document.getElementById('quantity-modal');
+  const modalClose = document.getElementById('modal-close');
+  const qtyGrid = document.getElementById('qty-grid');
+  const summaryTotal = document.getElementById('summary-total');
+  const summaryQty = document.getElementById('summary-qty');
+  const getNumbersBtn = document.getElementById('get-numbers');
+  const modalMessage = document.getElementById('modal-message');
+  const numbersEmpty = document.getElementById('numbers-empty');
+  const numbersList = document.getElementById('numbers-list');
+
+  let selectedQty = 1;
+
+  const session = {
+    KEY: 'tg_user',
+    load() {
+      try { return JSON.parse(localStorage.getItem(this.KEY)); }
+      catch { return null; }
+    },
+    save(user) { localStorage.setItem(this.KEY, JSON.stringify(user)); },
+    clear() { localStorage.removeItem(this.KEY); }
+  };
+
+  function isLocalPreview() {
+    return location.protocol === 'file:' ||
+      location.hostname === 'localhost' ||
+      location.hostname === '127.0.0.1';
+  }
+
+  function setMessage(text, type) {
+    message.textContent = text;
+    message.className = 'message' + (type ? ' ' + type : '');
+  }
+
+  function showLogin() {
+    authShell.hidden = false;
+    dashboard.hidden = true;
+  }
+
+  function showDashboard(user) {
+    authShell.hidden = true;
+    dashboard.hidden = false;
+
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Пользователь Telegram';
+    miniName.textContent = name;
+    miniUsername.textContent = user.username ? '@' + user.username : (user.id ? 'id: ' + user.id : 'Telegram');
+
+    if (user.photo_url) {
+      miniAvatarImg.src = user.photo_url;
+      miniAvatarImg.hidden = false;
+      miniAvatarPlaceholder.hidden = true;
+    } else {
+      miniAvatarImg.hidden = true;
+      miniAvatarPlaceholder.hidden = false;
+      miniAvatarPlaceholder.textContent = (user.first_name || 'U').charAt(0).toUpperCase();
+    }
+  }
+
+  let widgetInited = false;
+
+  function initTelegramWidget() {
+    if (widgetInited || !TELEGRAM_BOT_USERNAME || isLocalPreview()) return;
+    widgetInited = true;
+
+    btnTelegram.hidden = true;
+    widgetContainer.hidden = false;
+
+    const script = document.createElement('script');
+    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    script.async = true;
+    script.setAttribute('data-telegram-login', TELEGRAM_BOT_USERNAME);
+    script.setAttribute('data-size', 'large');
+    script.setAttribute('data-radius', '10');
+    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    script.setAttribute('data-request-access', 'write');
+
+    script.onerror = () => {
+      widgetContainer.hidden = true;
+      btnTelegram.hidden = false;
+      setMessage('Не удалось загрузить Telegram Login Widget. Проверьте домен и подключение.', 'error');
+    };
+
+    widgetContainer.appendChild(script);
+  }
+
+  window.onTelegramAuth = function(user) {
+    session.save(user);
+    showDashboard(user);
+  };
+
+  btnTelegram.addEventListener('click', () => {
+    if (isLocalPreview()) {
+      const demoUser = { id: 1, first_name: 'Demo', username: 'telegram_user' };
+      session.save(demoUser);
+      showDashboard(demoUser);
+      return;
+    }
+    initTelegramWidget();
+  });
+
+  btnLogout.addEventListener('click', () => {
+    session.clear();
+    showLogin();
+    initTelegramWidget();
+  });
+
+  function pluralNumbers(count) {
+    if (count === 1) return '1 номер';
+    if (count >= 2 && count <= 4) return count + ' номера';
+    return count + ' номеров';
+  }
+
+  function renderQtyButtons() {
+    qtyGrid.innerHTML = '';
+    for (let i = 1; i <= 10; i++) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'qty-btn' + (i === selectedQty ? ' active' : '');
+      button.textContent = i + 'x';
+      button.addEventListener('click', () => {
+        selectedQty = i;
+        renderQtyButtons();
+        updateSummary();
+      });
+      qtyGrid.appendChild(button);
+    }
+  }
+
+  function updateSummary() {
+    summaryTotal.textContent = (VK_PRICE * selectedQty).toFixed(1) + ' USDT';
+    summaryQty.textContent = pluralNumbers(selectedQty);
+    getNumbersBtn.textContent = 'Получить ' + pluralNumbers(selectedQty);
+  }
+
+  function openQuantityModal() {
+    selectedQty = 1;
+    modalMessage.textContent = '';
+    modalMessage.className = 'modal-message';
+    renderQtyButtons();
+    updateSummary();
+    quantityModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => modalClose.focus(), 0);
+  }
+
+  function closeQuantityModal() {
+    quantityModal.hidden = true;
+    document.body.style.overflow = '';
+    vkService.focus();
+  }
+
+  vkService.addEventListener('click', openQuantityModal);
+  modalClose.addEventListener('click', closeQuantityModal);
+
+  quantityModal.addEventListener('click', (event) => {
+    if (event.target === quantityModal) closeQuantityModal();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !quantityModal.hidden) closeQuantityModal();
+  });
+
+  /*
+    Пока подключена только покупка номера VK.
+
+    Браузер вызывает same-origin endpoint:
+      POST /api/buy-vk
+
+    А backend уже отправляет серверный запрос в SMSCodex с X-API-Key.
+    Получение SMS, complete и cancel здесь намеренно пока не реализованы.
+  */
+
+  function apiErrorMessage(data, status) {
+    if (typeof data === 'string' && data.trim()) return data.trim();
+
+    if (data && typeof data.detail === 'string') {
+      return data.detail;
+    }
+
+    if (data && Array.isArray(data.detail)) {
+      const messages = data.detail
+        .map(item => item && item.msg)
+        .filter(Boolean);
+      if (messages.length) return messages.join('; ');
+    }
+
+    if (data && typeof data.message === 'string') {
+      return data.message;
+    }
+
+    return 'SMSCodex вернул ошибку ' + status + '.';
+  }
+
+  function formatPhoneNumber(value) {
+    const phone = String(value || '').trim();
+    if (!phone) return '';
+    return /^\d+$/.test(phone) ? '+' + phone : phone;
+  }
+
+  async function purchaseVkNumber() {
+    let response;
+    try {
+      response = await fetch(VK_PURCHASE_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+    } catch (error) {
+      console.error('VK purchase request failed:', error);
+      throw new Error('Не удалось связаться с сервером сайта. Запустите backend и открывайте сайт через http://localhost:3000, а не через file://.');
+    }
+
+    const raw = await response.text();
+    let data = null;
+
+    if (raw) {
+      try { data = JSON.parse(raw); }
+      catch { data = raw; }
+    }
+
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, response.status));
+    }
+
+    if (!data || typeof data !== 'object' || !data.order_id || !data.phone_number) {
+      throw new Error('Сервер вернул ответ без order_id или phone_number.');
+    }
+
+    return {
+      id: data.order_id,
+      orderId: data.order_id,
+      phone: formatPhoneNumber(data.phone_number),
+      status: data.order_status || '',
+      price: data.price || '',
+      currency: data.currency || '',
+      expiresAt: data.expires_at || ''
+    };
+  }
+
+  async function requestNumbers(quantity) {
+    const purchased = [];
+
+    for (let index = 0; index < quantity; index++) {
+      modalMessage.textContent = 'Покупаем номер ' + (index + 1) + ' из ' + quantity + '…';
+      modalMessage.className = 'modal-message';
+
+      try {
+        purchased.push(await purchaseVkNumber());
+      } catch (error) {
+        return { purchased, error };
+      }
+    }
+
+    return { purchased, error: null };
+  }
+
+  function appendNumbers(numbers) {
+    numbersEmpty.hidden = true;
+    numbersList.hidden = false;
+
+    numbers.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'number-row';
+
+      const indexBox = document.createElement('div');
+      indexBox.className = 'number-index';
+      indexBox.textContent = '#' + (numbersList.children.length + 1);
+
+      const details = document.createElement('div');
+      const phone = document.createElement('div');
+      phone.className = 'phone-number';
+      phone.textContent = item.phone;
+      const note = document.createElement('div');
+      note.className = 'number-note';
+      note.textContent = item.orderId ? 'VK · заказ ' + item.orderId.slice(0, 8) + '…' : 'VK · номер куплен';
+      details.append(phone, note);
+
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'copy-btn';
+      copy.textContent = 'Копировать';
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(item.phone);
+          copy.textContent = 'Скопировано';
+          setTimeout(() => copy.textContent = 'Копировать', 1200);
+        } catch {
+          copy.textContent = item.phone;
+        }
+      });
+
+      row.append(indexBox, details, copy);
+      numbersList.appendChild(row);
+    });
+  }
+
+  getNumbersBtn.addEventListener('click', async () => {
+    getNumbersBtn.disabled = true;
+    const oldText = getNumbersBtn.textContent;
+    getNumbersBtn.textContent = 'Получаем номера…';
+    modalMessage.textContent = '';
+    modalMessage.className = 'modal-message';
+
+    try {
+      const requestedQty = selectedQty;
+      const result = await requestNumbers(requestedQty);
+
+      if (result.purchased.length) {
+        appendNumbers(result.purchased);
+      }
+
+      if (result.error) {
+        const bought = result.purchased.length;
+        const remaining = requestedQty - bought;
+
+        modalMessage.textContent = bought
+          ? 'Куплено ' + bought + ' из ' + requestedQty + '. Ошибка: ' + (result.error.message || 'покупка остановлена.')
+          : (result.error.message || 'Не удалось купить номер.');
+        modalMessage.className = 'modal-message error';
+
+        // Если часть номеров уже купилась, повторная кнопка будет покупать
+        // только оставшееся количество, чтобы не сделать дубль.
+        if (remaining > 0 && bought > 0) {
+          selectedQty = remaining;
+          renderQtyButtons();
+          updateSummary();
+        }
+        return;
+      }
+
+      closeQuantityModal();
+    } catch (error) {
+      modalMessage.textContent = error.message || 'Не удалось купить номера.';
+      modalMessage.className = 'modal-message error';
+    } finally {
+      getNumbersBtn.disabled = false;
+      updateSummary();
+    }
+  });
+
+  const savedUser = session.load();
+  if (savedUser) {
+    showDashboard(savedUser);
+  } else {
+    showLogin();
+    if (isLocalPreview()) {
+      setMessage('Локальный режим: нажмите кнопку Telegram, чтобы открыть демо-кабинет.', null);
+    } else {
+      initTelegramWidget();
+    }
+  }
+</script>
+</body>
+</html>
