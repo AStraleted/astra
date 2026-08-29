@@ -237,7 +237,7 @@
       border-radius: 20px;
       overflow: hidden;
       white-space: nowrap;
-      transition: width .3s var(--ease);
+      transition: width .45s var(--ease);
     }
     /* свёрнутое состояние по умолчанию: узкая пилюля с иконками.
        ширина анимируется, подписи просто клипаются (overflow: hidden + nowrap) */
@@ -252,7 +252,8 @@
     .sidebar.collapsed .acc-info,
     .sidebar.collapsed .side-account .icon-btn {
       opacity: 0;
-      transition: opacity .15s var(--ease);
+      transform: translateX(-8px);
+      transition: opacity .18s var(--ease), transform .18s var(--ease);
     }
     /* наведение — плавно разворачиваем; pinned — закреплено открытым */
     .sidebar.collapsed:hover,
@@ -276,7 +277,8 @@
     .sidebar.collapsed.pinned .acc-info,
     .sidebar.collapsed.pinned .side-account .icon-btn {
       opacity: 1;
-      transition: opacity .2s var(--ease) .12s;
+      transform: translateX(0);
+      transition: opacity .3s var(--ease) .18s, transform .3s var(--ease) .18s;
     }
     .nav { display: none; }
     .content {
@@ -660,6 +662,137 @@
   }
   .nav-item:not(.active)::after { content: ""; position: absolute; bottom: -3px; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
 
+  /* ---------- разделы и плавные переходы ---------- */
+  .view { display: none; flex-direction: column; }
+  .view.active { display: flex; animation: viewIn .3s var(--ease) both; }
+  @keyframes viewIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .view.view-sub.active { animation: subIn .32s var(--ease) both; }
+  @keyframes subIn { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: translateX(0); } }
+
+  /* шапка раздела */
+  .view-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 18px; }
+  .view-title { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+
+  /* чипы-фильтры */
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text-2);
+    font-family: inherit; font-size: 13.5px; font-weight: 500;
+    cursor: pointer;
+    transition: background .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease);
+  }
+  .chip:hover { color: var(--text); border-color: #262626; }
+  .chip.active { background: #fff; border-color: #fff; color: #000; }
+
+  /* пустое состояние */
+  .empty {
+    margin-top: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+    padding: 46px 24px;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+  .empty-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: rgba(255,255,255,0.05); color: var(--text-3);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .empty-icon svg { width: 24px; height: 24px; }
+  .empty-title { font-size: 16px; font-weight: 600; }
+  .empty-sub { font-size: 13px; font-weight: 300; color: var(--text-3); margin-top: 6px; max-width: 270px; line-height: 1.5; }
+  .empty .cta { margin-top: 24px; max-width: 300px; }
+
+  /* подэкран: кнопка назад */
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    align-self: flex-start;
+    margin: 4px 0 12px;
+    padding: 8px 14px 8px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-2);
+    font-family: inherit; font-size: 13.5px; font-weight: 500;
+    cursor: pointer;
+    transition: background .2s var(--ease), color .2s var(--ease);
+  }
+  .back-btn:hover { background: var(--card-hover); color: var(--text); }
+  .back-btn svg { width: 15px; height: 15px; }
+
+  /* инфо-панель «Перед сделкой» */
+  .notice {
+    border: 1px solid rgba(245,158,11,0.25);
+    background: #20190F;
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+  .notice-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #F59E0B; margin-bottom: 10px; }
+  .notice ul { margin: 0; padding-left: 18px; }
+  .notice li { font-size: 13px; font-weight: 300; color: #D8C7AE; line-height: 1.55; margin-bottom: 6px; }
+  .notice li:last-child { margin-bottom: 0; }
+
+  /* форма */
+  .field { margin-bottom: 16px; }
+  .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 8px; }
+  .field-hint { font-size: 11.5px; font-weight: 300; color: var(--text-3); margin-top: 6px; }
+  .input, .textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-family: inherit; font-size: 15px; color: var(--text);
+    outline: none;
+    transition: border-color .2s var(--ease), background .2s var(--ease);
+  }
+  .input::placeholder, .textarea::placeholder { color: var(--text-3); font-weight: 300; }
+  .input:focus, .textarea:focus { border-color: var(--accent); background: #0A0A0A; }
+  .textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
+
+  /* выбор из двух карточек */
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .opt {
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit; color: var(--text);
+    transition: border-color .2s var(--ease), background .2s var(--ease);
+  }
+  .opt:hover { border-color: #262626; background: var(--card-hover); }
+  .opt.selected { border-color: var(--accent); background: rgba(43,127,255,0.08); }
+  .opt-title { font-size: 14.5px; font-weight: 600; }
+  .opt-sub { font-size: 12px; font-weight: 300; color: var(--text-3); margin-top: 3px; }
+
+  .form-note { font-size: 12px; font-weight: 300; color: var(--text-3); text-align: center; margin: 2px 0 14px; }
+
+  /* тост */
+  .toast {
+    position: fixed;
+    left: 50%; bottom: 110px;
+    transform: translateX(-50%) translateY(12px);
+    background: #fff; color: #000;
+    font-size: 14px; font-weight: 600;
+    padding: 12px 22px;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s var(--ease), transform .25s var(--ease);
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   /* ---------- десктоп: финальные переопределения (в конце, чтобы не перекрывались базовыми стилями) ---------- */
   @media (min-width: 900px) {
     .content { padding: 44px 48px 72px; }
@@ -771,6 +904,8 @@
       </div>
     </div>
 
+    <!-- ========== ГЛАВНАЯ ========== -->
+    <div class="view view-home active" data-view="home">
     <!-- profile -->
     <div class="profile">
       <div class="avatar-wrap">
@@ -841,7 +976,7 @@
     </div>
 
     <!-- CTA -->
-    <button class="cta">
+    <button class="cta open-newdeal">
       <svg class="ic" stroke="currentColor" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
       Новая сделка
     </button>
@@ -889,6 +1024,132 @@
         </span>
       </div>
     </div>
+    </div><!-- /.view-home -->
+
+    <!-- ========== СДЕЛКИ ========== -->
+    <div class="view" data-view="deals">
+      <div class="view-head">
+        <h1 class="view-title">Сделки</h1>
+        <button class="icon-btn" id="newDealBtn" aria-label="Новая сделка">
+          <svg class="ic" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+        </button>
+      </div>
+      <div class="chips">
+        <button class="chip active">Все</button>
+        <button class="chip">Активные</button>
+        <button class="chip">Завершённые</button>
+        <button class="chip">Споры</button>
+      </div>
+      <div class="empty">
+        <div class="empty-icon">
+          <svg class="ic" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"></path><path d="M4 7h16"></path><path d="m16 21 4-4-4-4"></path><path d="M20 17H4"></path></svg>
+        </div>
+        <div class="empty-title">Сделок пока нет</div>
+        <div class="empty-sub">Создайте первую сделку — гарант-бот защитит обе стороны</div>
+        <button class="cta open-newdeal">
+          <svg class="ic" stroke="currentColor" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+          Новая сделка
+        </button>
+      </div>
+    </div>
+
+    <!-- ========== МАРКЕТ ========== -->
+    <div class="view" data-view="market">
+      <div class="view-head">
+        <h1 class="view-title">Маркет</h1>
+      </div>
+      <div class="empty">
+        <div class="empty-icon">
+          <svg class="ic" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+        </div>
+        <div class="empty-title">Маркет скоро откроется</div>
+        <div class="empty-sub">Здесь появятся товары и услуги от проверенных продавцов</div>
+      </div>
+    </div>
+
+    <!-- ========== РЕПУТАЦИЯ ========== -->
+    <div class="view" data-view="rep">
+      <div class="view-head">
+        <h1 class="view-title">Репутация</h1>
+      </div>
+      <div class="empty">
+        <div class="empty-icon">
+          <svg class="ic" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>
+        </div>
+        <div class="empty-title">Отзывов пока нет</div>
+        <div class="empty-sub">После сделок здесь появятся +rep и −rep от контрагентов</div>
+      </div>
+    </div>
+
+    <!-- ========== НОВАЯ СДЕЛКА (подэкран) ========== -->
+    <div class="view view-sub" data-view="newdeal">
+      <button class="back-btn" id="backToDeals">
+        <svg class="ic" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+        Назад
+      </button>
+      <div class="view-head">
+        <h1 class="view-title">Новая сделка</h1>
+      </div>
+
+      <div class="notice">
+        <div class="notice-title">Перед сделкой</div>
+        <ul>
+          <li>Заранее зафиксируйте условия в поле ниже — кто что отдаёт и получает.</li>
+          <li>Сохраните скрины важных SMS и переписки до старта. В споре удалённые сообщения часто уже не восстановить.</li>
+          <li>Не начинайте, пока обе стороны не подтвердили условия.</li>
+        </ul>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Контрагент</label>
+        <input class="input" placeholder="@username или ID">
+      </div>
+
+      <div class="field">
+        <label class="field-label">Сумма, $</label>
+        <input class="input" inputmode="decimal" placeholder="50">
+      </div>
+
+      <div class="field">
+        <label class="field-label">Баланс для сделки</label>
+        <div class="opts">
+          <button class="opt selected">
+            <div class="opt-title">CryptoBot</div>
+            <div class="opt-sub">баланс 0.00$</div>
+          </button>
+          <button class="opt">
+            <div class="opt-title">xRocket</div>
+            <div class="opt-sub">баланс 0.00$</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Ваша роль</label>
+        <div class="opts">
+          <button class="opt selected">
+            <div class="opt-title">Покупатель</div>
+            <div class="opt-sub">Плачу и получаю</div>
+          </button>
+          <button class="opt">
+            <div class="opt-title">Продавец</div>
+            <div class="opt-sub">Отдаю и получаю оплату</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Условия</label>
+        <textarea class="textarea" maxlength="2000" placeholder="Что передаёте / получаете, сроки, как проверяете. До 2000 символов."></textarea>
+        <div class="field-hint">до 2000 символов</div>
+      </div>
+
+      <div class="form-note">Сделка и выплата — через выбранный баланс · USDT</div>
+      <button class="cta" id="createDeal">
+        <svg class="ic" stroke="currentColor" fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+        Создать сделку
+      </button>
+    </div>
   </div>
 
   <!-- bottom nav -->
@@ -914,6 +1175,8 @@
   </nav>
 </div>
 
+<div class="toast" id="toast">Сделка создана</div>
+
 <script>
   // TRUST: цвет зависит от репутации (>=50 зелёный, 0..49 жёлтый, <0 красный)
   const repScore = 148;
@@ -928,13 +1191,51 @@
   const pinBtn = document.querySelector('.side-pin');
   if (pinBtn) pinBtn.addEventListener('click', () => sidebar.classList.toggle('pinned'));
 
-  // переключение вкладок: синхронно для нижней навигации (мобайл) и сайдбара (десктоп)
+  // переключение разделов: навигация + сайдбар + плавная смена экранов
+  const views = document.querySelectorAll('.view');
+  function showView(name) {
+    views.forEach(v => v.classList.toggle('active', v.dataset.view === name));
+    window.scrollTo({ top: 0 });
+  }
   function setTab(tab) {
     document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     moveGlider();
+    if (['home', 'deals', 'market', 'rep'].includes(tab)) showView(tab);
   }
   document.querySelectorAll('[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => setTab(btn.dataset.tab));
+  });
+
+  // кнопки «+» и CTA → экран новой сделки
+  document.querySelectorAll('.open-newdeal, #newDealBtn').forEach(b =>
+    b.addEventListener('click', () => showView('newdeal')));
+  document.getElementById('backToDeals').addEventListener('click', () => showView('deals'));
+
+  // чипы-фильтры
+  document.querySelectorAll('.chips').forEach(group => {
+    group.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+      });
+    });
+  });
+
+  // выбор карточек (баланс, роль)
+  document.querySelectorAll('.opts').forEach(group => {
+    group.querySelectorAll('.opt').forEach(opt => {
+      opt.addEventListener('click', () => {
+        group.querySelectorAll('.opt').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+      });
+    });
+  });
+
+  // создание сделки: тост и возврат к списку
+  const toast = document.getElementById('toast');
+  document.getElementById('createDeal').addEventListener('click', () => {
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); showView('deals'); }, 1400);
   });
 
   // скользящая подложка активного пункта меню (десктоп)
