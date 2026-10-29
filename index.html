@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="description" content="Squled Studio — анимированные аватарки и баннеры на заказ. After Effects, Photoshop, Photopea.">
+<title>Squled Studio — аватарки и баннеры на заказ</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="preload" href="assets/fonts/Inter-Regular.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="assets/fonts/Lora-Variable.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Шапка -->
+<header class="top" id="top">
+  <div class="top-in">
+    <a href="#hero" class="wordmark" aria-label="Squled Studio — наверх">
+      <span class="mark"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><path class="m-tile" d="M16 0C27.2 0 32 4.8 32 16S27.2 32 16 32 0 27.2 0 16 4.8 0 16 0z"/><path class="m-s" d="M18.4 9.6h-6.3a3.2 3.2 0 0 0 0 6.4h5.4a3.2 3.2 0 0 1 0 6.4H9.2"/><circle class="m-dot" cx="22.2" cy="9.6" r="1.75"/></svg></span>
+      <b>SQULED</b><span>Studio</span>
+    </a>
+    <nav class="top-nav">
+      <a href="#works">Работы</a>
+      <a href="#prices">Цены</a>
+      <a href="#process">Как работаю</a>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="https://t.me/wesfw" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M21 4.5 2.9 11.4c-.9.4-.9 1.4 0 1.7l4.6 1.4 1.7 5.3c.2.6.9.8 1.4.4l2.6-2.1 4.6 3.4c.6.4 1.4.1 1.6-.6L22.4 5.6c.2-.8-.6-1.4-1.4-1.1zM9.6 14.2l-.4 3.6-1.2-3.9 9.5-6.1z" fill="currentColor"/></svg>
+      <span>Заказать</span>
+    </a>
+  </div>
+</header>
+
+<main>
+  <!-- Первый экран -->
+  <section class="hero" id="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-in">
+      <span class="badge reveal"><i class="dot"></i>Принимаю заказы</span>
+      <h1 class="reveal">Аватарки и баннеры,<br><em>которые двигаются</em></h1>
+      <p class="lead reveal">Делаю анимированные и статичные аватарки и баннеры на заказ — для Telegram, Discord, YouTube, Twitch и стримов.</p>
+      <div class="hero-cta reveal">
+        <a class="btn btn-primary btn-lg" href="https://t.me/wesfw" target="_blank" rel="noopener">Написать в Telegram
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="btn btn-ghost btn-lg" href="#works">Смотреть работы</a>
+      </div>
+      <ul class="tools reveal" aria-label="Инструменты">
+        <li><span class="tool ae">Ae</span>After Effects</li>
+        <li><span class="tool ps">Ps</span>Photoshop</li>
+        <li><span class="tool pp">Pp</span>Photopea</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Работы -->
+  <section class="section" id="works">
+    <div class="section-head reveal">
+      <span class="kicker">Портфолио</span>
+      <h2>Работы</h2>
+      <p>Нажмите на работу, чтобы открыть её крупно со звуком.</p>
+    </div>
+    <div class="works">
+      <button class="work reveal" type="button" data-src="assets/works/work-1.mp4" data-title="Анимированная работа">
+        <video src="assets/works/work-1.mp4" muted loop playsinline autoplay preload="metadata"></video>
+        <span class="work-meta"><b>Анимация</b><span>After Effects</span></span>
+        <span class="work-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg></span>
+      </button>
+      <button class="work reveal" type="button" data-src="assets/works/work-2.mp4" data-title="Работа для @wesfw">
+        <video src="assets/works/work-2.mp4" muted loop playsinline autoplay preload="metadata"></video>
+        <span class="work-meta"><b>@wesfw</b><span>After Effects</span></span>
+        <span class="work-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Цены -->
+  <section class="section" id="prices">
+    <div class="section-head reveal">
+      <span class="kicker">Цены</span>
+      <h2>Сколько стоит</h2>
+      <p>Цена фиксированная. Переключите, чтобы посмотреть статичный вариант.</p>
+      <div class="seg" role="tablist" aria-label="Тип работы">
+        <button type="button" role="tab" aria-selected="true" data-kind="anim">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/></svg>Анимированный</button>
+        <button type="button" role="tab" aria-selected="false" data-kind="static">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 15.5l-5-5L5 19.5"/></svg>Статичный</button>
+      </div>
+    </div>
+
+    <div class="plans">
+      <article class="plan reveal">
+        <div class="plan-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></div>
+        <h3>Аватар</h3>
+        <p class="plan-sub">Для профиля в Telegram, Discord, YouTube, Twitch</p>
+        <div class="price"><span class="price-val" data-anim="10" data-static="7">10</span><span class="price-cur">$</span></div>
+        <ul class="feat">
+          <li data-for="anim">Плавная анимация в After Effects</li>
+          <li data-for="anim">MP4 и GIF под нужную площадку</li>
+          <li data-for="static" hidden>Photoshop или Photopea</li>
+          <li data-for="static" hidden>PNG в высоком разрешении</li>
+          <li>Правки до результата</li>
+        </ul>
+        <a class="btn btn-ghost btn-block" href="https://t.me/wesfw" target="_blank" rel="noopener">Заказать аватар</a>
+      </article>
+
+      <article class="plan plan-accent reveal">
+        <span class="plan-tag">Популярное</span>
+        <div class="plan-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8.5 20h7M12 16.5V20"/></svg></div>
+        <h3>Баннер</h3>
+        <p class="plan-sub">Шапка канала, стрима, профиля или сервера</p>
+        <div class="price"><span class="price-val" data-anim="40" data-static="10">40</span><span class="price-cur">$</span></div>
+        <ul class="feat">
+          <li data-for="anim">Анимация в After Effects</li>
+          <li data-for="anim">MP4 и GIF под размеры площадки</li>
+          <li data-for="static" hidden>Photoshop или Photopea</li>
+          <li data-for="static" hidden>PNG/JPG под размеры площадки</li>
+          <li>Правки до результата</li>
+        </ul>
+        <a class="btn btn-primary btn-block" href="https://t.me/wesfw" target="_blank" rel="noopener">Заказать баннер</a>
+      </article>
+    </div>
+  </section>
+
+  <!-- Как работаю -->
+  <section class="section" id="process">
+    <div class="section-head reveal">
+      <span class="kicker">Процесс</span>
+      <h2>Как я работаю</h2>
+    </div>
+    <ol class="steps">
+      <li class="step reveal"><span class="step-n">1</span><h3>Пишете в Telegram</h3><p>Расскажите, что нужно: аватар или баннер, анимация или статика, примеры и цвета.</p></li>
+      <li class="step reveal"><span class="step-n">2</span><h3>Согласуем идею</h3><p>Уточняю детали, размеры и площадку, называю срок.</p></li>
+      <li class="step reveal"><span class="step-n">3</span><h3>Делаю работу</h3><p>After Effects для анимации, Photoshop и Photopea для графики. Показываю промежуточный вариант.</p></li>
+      <li class="step reveal"><span class="step-n">4</span><h3>Отдаю файлы</h3><p>Готовые файлы в нужном формате. Вносим правки, если что-то не так.</p></li>
+    </ol>
+  </section>
+
+  <!-- Призыв -->
+  <section class="section">
+    <div class="cta reveal">
+      <h2>Нужна аватарка или баннер?</h2>
+      <p>Напишите в Telegram — отвечу и посчитаю заказ.</p>
+      <a class="btn btn-white btn-lg" href="https://t.me/wesfw" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M21 4.5 2.9 11.4c-.9.4-.9 1.4 0 1.7l4.6 1.4 1.7 5.3c.2.6.9.8 1.4.4l2.6-2.1 4.6 3.4c.6.4 1.4.1 1.6-.6L22.4 5.6c.2-.8-.6-1.4-1.4-1.1zM9.6 14.2l-.4 3.6-1.2-3.9 9.5-6.1z" fill="currentColor"/></svg>
+        @wesfw
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="foot-in">
+    <span>© <span id="year"></span> Squled Studio</span>
+    <a href="https://t.me/wesfw" target="_blank" rel="noopener">Telegram @wesfw</a>
+  </div>
+</footer>
+
+<!-- Просмотр работы -->
+<div class="viewer" id="viewer" hidden>
+  <div class="viewer-box" role="dialog" aria-modal="true" aria-label="Просмотр работы">
+    <button class="icon-btn viewer-close" type="button" aria-label="Закрыть"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <video controls playsinline loop></video>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
